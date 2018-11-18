@@ -163,7 +163,7 @@ class myHandler(BaseHTTPRequestHandler):
                 if ((storage._user_mes.get(data["login"])) is not None):
                     string = ""
                     for names in  storage._user_mes[data["login"]].keys():
-                        string = names +  storage._user_mes[data["login"]][names]
+                        string = string + names+": \n" +  storage._user_mes[data["login"]][names]+"\n"
                         storage._user_mes[data["login"]][names] = ""
                 result["error"] = "OK"
                 result["message"] = string
