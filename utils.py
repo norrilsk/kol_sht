@@ -15,3 +15,20 @@ def fast_power(x, y, mod = None):
             k %= mod
             mul %= mod
     return mul
+
+
+def bytes_to_int (bytes):
+    a = 0
+    for s in bytes:
+        a = a*256 + int(s)
+    return a
+
+
+def int_to_bytes(c:int):
+    b = [0]*64
+    for i in range(64):
+        b[63-i] = c%256
+        c=c//256
+    print(b)
+    print(bytearray(b))
+    return bytearray(b)

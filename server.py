@@ -11,30 +11,40 @@
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from Crypto.Util import number
-from Crypto.Random import random
+from Crypto.Random import random, get_random_bytes
 from utils import fast_power
+from utils import bytes_to_int
+from utils import int_to_bytes
 import json
+import hashlib
 
 PORT_NUMBER = 8080
 
+class Storage:
+    def __init__(self):
+        self._prime = number.getPrime(256)
+        self._p = number.getPrime(256)
+        self._g = random.randint(2, self._p)
+        # self._B = fast_power(self._g, self._prime,mod = self._p)
+        self._user_K = {}
+        self._user_pas = {}
+        self._user_mes = {}
+        self._R2 = bytes_to_int(get_random_bytes(256 // 8))
+        self._user_R3 = {}
+
+storage = Storage()
 
 # This class will handles any incoming request from
 # the browser
 class myHandler(BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
 
-        self._prime = number.getPrime(256)
-        self._p = number.getPrime(256)
-        self._g = random.randint(2,self._p)
-        self._B = fast_power(self._g, self._prime,mod = self._p)
-        self._user_K = {}
-        self._user_pas = {}
-        self._user_mes = {}
+
         super().__init__(request, client_address, server)
     # Handler for the GET requests
     def do_GET(self):
         self.send_response(200)
-        message = "hello world"
+        message = "hello jopka"
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         # Send the html message
@@ -62,47 +72,105 @@ class myHandler(BaseHTTPRequestHandler):
         data = json.loads(data)
         result = {}
         if (data["type"] == "getpg"):
-            result["p"] = self._p
-            result["g"] = self._g
-            result["B"] = self._B
+            result["p"] = storage._p
+            result["g"] = storage._g
+            #result["B"] = storage._B
+            return json.dumps(result)
+        elif (data["type"] == "getR3"):
+            if (storage._user_pas.get(data["login"])) is None:
+                result["R3"] = storage._R2
+                result["error"] = "OK"
+                return json.dumps(result)
+            else:
+                result["R3"] = storage._user_R3[data["login"]]
+                result["error"] = "OK"
+                return json.dumps(result)
+        elif (data["type"] == "getR2"):
+            result["R2"] = storage._R2
+            result["error"] = "OK"
             return json.dumps(result)
         elif (data["type"] == "register"):
-            if (self._user_K.get(data["login"])) is None:
-                self._user_K[data["login"]] = fast_power(data["A"],self._prime,mod=self._p)
-                self._user_pas[data["login"]] = data["password"]^self._user
-                self._user_mes[data["login"]]  = {}
+            if (storage._user_pas.get(data["login"])) is None:
+                storage._user_pas[data["login"]] = data["password"]
+                storage._user_mes[data["login"]]  = {}
+                storage._user_R3[data["login"]] = storage._R2
+                print("u pas ", storage._user_pas)
+                result["R3"] = storage._R2
                 result["error"] = "OK"
                 return json.dumps(result)
             else:
                 result["error"] = "accupied"
                 return json.dumps(result)
+        elif (data["type"] == "autorize"):
+            if (storage._user_pas.get(data["login"])) is None:
+                result["error"] = "login_error"
+                return json.dumps(result)
+            login = data["login"]
+            m = hashlib.sha256()
+            m.update(int_to_bytes(storage._user_pas[login]))
+            m.update(int_to_bytes(storage._user_R3[login]))
+            t1 = bytes_to_int(m.digest())
+            t2 = (data["password"])
+            if (t1 == t2):
+                storage._user_R3[login] += 1
+                result["R3"] = storage._user_R3[login]
+                result["error"] = "OK"
+                return json.dumps(result)
+            else:
+                result["error"] = "password_error"
+                return json.dumps(result)
 
         elif (data["type"] == "send"):
-            if (self._user_pass.get(data["login"]) == data["password"]):
-                if ((self._user_K.get(data["user"])) is None):
+            if (storage._user_pas.get(data["login"])) is None:
+                result["error"] = "login_error"
+                return json.dumps(result)
+            login = data["login"]
+            m = hashlib.sha256()
+            m.update(int_to_bytes(storage._user_pas[login]))
+            m.update(int_to_bytes(storage._user_R3[login]))
+            t1 = bytes_to_int(m.digest())
+            t2 = (data["password"])
+            if (t1 == t2):
+                storage._user_R3[login] += 1
+                result["R3"] = storage._user_R3[login]
+                if ((storage._user_pas.get(data["user"])) is None):
                     result["error"] = "NOUSER"
                     return json.dumps(result)
                 else:
-                    if ((self._user_mes[data["login"]].get(data["user"])) is not None):
-                        self._user_mes[data["login"]][data["user"]] += "\n" + str(data["message"])
+                    if ((storage._user_mes[data["user"]].get(data["login"])) is not None):
+                        storage._user_mes[data["user"]][data["login"]] += "\n" + str(data["message"])
                     else:
-                        self._user_mes[data["login"]][data["user"]] = str(data["message"])
+                        storage._user_mes[data["user"]][data["login"]] = str(data["message"])
                     result["error"] = "OK"
                     return json.dumps(result)
             else:
                 result["error"] = "password_error"
                 return json.dumps(result)
         elif (data["type"] == "recv"):
-            if ((self._user_K.get(data["login"])) is not None) and (
-                    self._user_pass.get(data["login"]) == data["password"]):
-                if ((self._user_mes[data["login"]].get(data["user"])) is not None):
-                    result["message"] =   self._user_mes[data["login"]][data["user"]]
-                else:
-                    result["message"] = ""
+            if (storage._user_pas.get(data["login"])) is None:
+                result["error"] = "login_error"
+                return json.dumps(result)
+            login = data["login"]
+            m = hashlib.sha256()
+            m.update(int_to_bytes(storage._user_pas[login]))
+            m.update(int_to_bytes(storage._user_R3[login]))
+            t1 = bytes_to_int(m.digest())
+            t2 = (data["password"])
+            if (t1 == t2):
+                storage._user_R3[login] += 1
+                result["R3"] = storage._user_R3[login]
+
+                if ((storage._user_mes.get(data["login"])) is not None):
+                    string = ""
+                    for names in  storage._user_mes[data["login"]].keys():
+                        string = names +  storage._user_mes[data["login"]][names]
+                        storage._user_mes[data["login"]][names] = ""
                 result["error"] = "OK"
+                result["message"] = string
                 return json.dumps(result)
             else:
                 result["error"] = "password_error"
+                return json.dumps(result)
         return json.dumps(result)
 try:
     # Create a web server and define the handler to manage the
