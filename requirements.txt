@@ -5,3 +5,7 @@ matplotlib
 seaborn
 scikit-image
 pypng
+requests
+httpserver
+pycryptodome
+pycryptodomex
