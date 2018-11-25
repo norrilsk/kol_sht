@@ -10,15 +10,8 @@ prime = number.getPrime(256)
 
 
 import hashlib
-# r = requests.get('https://api.github.com/events')
-# print( r.json())
-# r = requests.post('https://httpbin.org/post', data = {'key':'value'})
-# print(r.json())
-# payload = {'key1': 'value1', 'key2': 'value2'}
-# r = requests.get('https://httpbin.org/get', params=payload)
-# #print(r.url)
-# #print(r.text)
-#
+import argparse
+
 class User:
     def __init__(self):
         self._g = 0
@@ -28,6 +21,7 @@ class User:
         self._R3 = 0
         self._login =""
         self._password = ""
+        self._parser = self.createParser()
     def register(self):
         r = requests.post(SERVER_ADDR, data= json.dumps({"type" : "getR2"}))
         data = r.json()
@@ -137,13 +131,43 @@ class User:
 
         print(data)
 
+    def createParser(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-receive', '-rec',   action='store_const', const=True , help="recieve all messages from the server")
+        parser.add_argument('-register', '-reg', action='store_const', const=True, help = "register new user" )
+        parser.add_argument('-authorize', '-au', '-a', action='store_const', const=True, help = "authorize into system")
+        parser.add_argument('-send', '-s', nargs=2, metavar=('user', 'message'),  help = "Send message to user")
 
-print("hello, your enter my first client app")
+
+        return parser
+    def parse(self, string):
+        namespace = self._parser.parse_args(string.split())
+        if (namespace.receive):
+            user.recv_message()
+        if (namespace.register):
+            user.register()
+        if (namespace.authorize):
+            user.autorize()
+        if (namespace.send is not None):
+            user.send_message_to_user(namespace.send[0],namespace.send[1])
+        return
+
+
+
+
+
+print("hello, your enter my first client app, use #help ")
 user = User()
+exit = False
+while not (exit):
+    string = input()
+    user.parse(string)
+
+
+
+
 user.register()
 user.autorize()
 user.send_message_to_user("norrilsk","LOOOOOL")
 user.recv_message()
-
-#while (input().strip().lower() != "exit"):
 
