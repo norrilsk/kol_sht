@@ -29,6 +29,4 @@ def int_to_bytes(c:int):
     for i in range(64):
         b[63-i] = c%256
         c=c//256
-    print(b)
-    print(bytearray(b))
     return bytearray(b)
