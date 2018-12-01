@@ -549,7 +549,7 @@ def get_key_from_print(img00, file_name = None):
 
     return roi.get_key(a1, a3)
 
-
+#"./data/NIST/figs_0/f0017_06.png"
 if __name__ == '__main__':
     start = time.time()
     PATH_TO_DATA = "./data/NIST/"
